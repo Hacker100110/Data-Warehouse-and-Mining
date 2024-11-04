@@ -1,87 +1,59 @@
 import numpy as np
-from scipy.cluster.hierarchy import linkage, dendrogram
-import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.spatial.distance import pdist, squareform
+from scipy.cluster.hierarchy import linkage, dendrogram
+import matplotlib.pyplot as plt
 
-# Data points (values)
+# Data points and labels
 points = np.array([18, 22, 25, 27, 42, 43])
-
-# Calculate pairwise Euclidean distance matrix (full)
-full_distances = np.abs(points[:, None] - points)
-
-# Convert full distance matrix to condensed form (required by linkage)
-condensed_distances = squareform(full_distances)
-
-# Initial labels for the elements
+full_dist = np.abs(points[:, None] - points)
+cond_dist = squareform(full_dist)
 labels = ['18', '22', '25', '27', '42', '43']
 
-# Function to print the distance matrix and clusters at each step
-def print_matrix_and_clusters(matrix, step, labels, clusters):
-    df = pd.DataFrame(matrix, columns=labels, index=labels)
-    print(f"\nDistance matrix at step {step}:\n", df)
-   
-    print(f"Clusters at step {step}:")
-    for i, cluster in enumerate(clusters):
-        print(f"Cluster {i+1}: {cluster}")
+# Function to print distance matrix
+def print_mat(mat, step, labels):
+    df = pd.DataFrame(mat, columns=labels, index=labels)
+    print(f"Distance Matrix at step {step} :\n", df)
 
-# Single-linkage clustering algorithm
-def single_linkage_clustering(dist_matrix):
+# Single-linkage clustering function
+def s_link_cluster(dist_mat):
     global labels
-    n = dist_matrix.shape[0]
-    current_matrix = dist_matrix.copy()
     step = 1
-   
-    # Initialize clusters: each data point starts in its own cluster
-    clusters = [[label] for label in labels]
+    n = 6
+    curr_mat = dist_mat.copy()
 
     while n > 1:
-        # Find the minimum non-zero distance
         min_dist = np.inf
-        for i in range(len(current_matrix)):
-            for j in range(i + 1, len(current_matrix)):
-                if current_matrix[i, j] < min_dist:
-                    min_dist = current_matrix[i, j]
-                    cluster_a, cluster_b = i, j
+        for i in range(len(curr_mat)):
+            for j in range(i + 1, len(curr_mat)):
+                if curr_mat[i, j] < min_dist:
+                    min_dist = curr_mat[i, j]
+                    cl_a, cl_b = i, j
 
-        # Print the current matrix and clusters before the merge
-        print_matrix_and_clusters(current_matrix, step, labels, clusters)
+        print_mat(curr_mat, step, labels)
+        
+        new_cl = np.minimum(curr_mat[cl_a], curr_mat[cl_b])
+        inds = [x for x in range(len(curr_mat)) if x != cl_a and x != cl_b]
 
-        # Merge clusters and update distances
-        new_cluster = np.minimum(current_matrix[cluster_a], current_matrix[cluster_b])
+        new_mat = np.zeros((n - 1, n - 1))
+        new_mat[:-1, :-1] = curr_mat[np.ix_(inds, inds)]
+        new_mat[-1, :-1] = new_mat[:-1, -1] = new_cl[inds]
 
-        # Create a new matrix with the merged cluster
-        new_matrix = np.zeros((n-1, n-1))
-        indices = [x for x in range(len(current_matrix)) if x != cluster_a and x != cluster_b]
-       
-        # Fill the new matrix
-        new_matrix[:-1, :-1] = current_matrix[np.ix_(indices, indices)]
-        new_matrix[-1, :-1] = new_matrix[:-1, -1] = new_cluster[indices]
-       
-        current_matrix = new_matrix
+        curr_mat = new_mat
 
-        # Update labels after merging
-        new_label = f"({labels[cluster_a]},{labels[cluster_b]})"
-        labels = [labels[i] for i in indices] + [new_label]
-
-        # Merge the corresponding clusters
-        new_cluster_list = clusters[cluster_a] + clusters[cluster_b]
-        clusters = [clusters[i] for i in indices] + [new_cluster_list]
+        new_lbl = f"({labels[cl_a]},{labels[cl_b]})"
+        labels = [labels[i] for i in inds] + [new_lbl]
 
         n -= 1
         step += 1
-   
-    # Final step: print last matrix and clusters
-    print_matrix_and_clusters(current_matrix, step, labels, clusters)
 
-# Call the single linkage clustering function
-single_linkage_clustering(full_distances)
+    print_mat(curr_mat, step, labels)
 
-# Generate a dendrogram using the scipy linkage function
-Z = linkage(condensed_distances, method='single')
+# Run the single-linkage clustering and plot the dendrogram
+s_link_cluster(full_dist)
+z = linkage(cond_dist, method='single')
 
-plt.figure(figsize=(8, 6))
-dendrogram(Z, labels=['18', '22', '25', '27', '42', '43'])
+dendrogram(z, labels=['18', '22', '25', '27', '42', '43'])
 plt.title('Single Linkage Dendrogram')
 plt.xlabel('Cluster')
 plt.ylabel('Distance')
