@@ -1,63 +1,69 @@
 from itertools import combinations
 
-def get_input_data():
-    transactions = [set(input(f"Enter items in transaction {i + 1} (separated by space): ").split()) 
-                    for i in range(int(input("Enter number of transactions: ")))]
-    return transactions
+def get_data():
+    trans = [set(input(f"Enter items in transaction {i + 1} (separated by space): ").lower().split()) 
+             for i in range(int(input("Enter number of transactions: ")))]
+    return trans
 
-def calculate_support(itemset, transactions):
-    return sum(1 for transaction in transactions if itemset.issubset(transaction)) / len(transactions)
+def calc_supp(item, trans):
+    return sum(1 for tr in trans if item.issubset(tr)) / len(trans)
 
-def apriori(transactions, min_support):
-    # Generate 1-itemsets with min_support
-    items = {item for transaction in transactions for item in transaction}
-    freq_itemsets = [{item} for item in items if calculate_support({item}, transactions) >= min_support]
-    all_freq_itemsets, supports = [], {}
+def apriori(trans, min_supp):
+    # Generate initial 1-itemsets with min_supp
+    items = {itm for tr in trans for itm in tr}
+    freq_sets = [{itm} for itm in items if calc_supp({itm}, trans) >= min_supp]
+    all_freq, supps = [], {}
     
-    # Store supports for single itemsets
-    for itemset in freq_itemsets:
-        supports[frozenset(itemset)] = calculate_support(itemset, transactions)
-        all_freq_itemsets.append(itemset)
+    # Store supports for 1-itemsets
+    for itm in freq_sets:
+        supps[frozenset(itm)] = calc_supp(itm, trans)
+        all_freq.append(itm)
         
     k = 2
-    while freq_itemsets:
-        candidates = [a | b for i, a in enumerate(freq_itemsets) for b in freq_itemsets[i+1:] if len(a | b) == k]
-        freq_itemsets = [itemset for itemset in candidates if calculate_support(itemset, transactions) >= min_support]
+    while freq_sets:
+        # Generate candidates only from combinations of the current frequent itemsets
+        cand = [a | b for i, a in enumerate(freq_sets) for b in freq_sets[i + 1:] if len(a | b) == k]
         
-        for itemset in freq_itemsets:
-            supports[frozenset(itemset)] = calculate_support(itemset, transactions)
+        # Filter candidates based on support
+        freq_sets = []
+        for itm in cand:
+            if itm not in supps:  # Avoid recalculating support for the same itemset
+                supp = calc_supp(itm, trans)
+                if supp >= min_supp:
+                    freq_sets.append(itm)
+                    supps[frozenset(itm)] = supp
         
-        all_freq_itemsets.extend(freq_itemsets)
+        all_freq.extend(freq_sets)
         k += 1
 
-    return all_freq_itemsets, supports
+    return all_freq, supps
 
-def generate_association_rules(freq_itemsets, supports, min_confidence):
+def gen_rules(freq_sets, supps, min_conf):
     rules = []
-    for itemset in freq_itemsets:
-        for i in range(1, len(itemset)):
-            for antecedent in map(set, combinations(itemset, i)):
-                consequent = itemset - antecedent
-                confidence = supports[frozenset(itemset)] / supports[frozenset(antecedent)]
-                if confidence >= min_confidence:
-                    rules.append((tuple(antecedent), tuple(consequent), confidence))
+    for itm in freq_sets:
+        for i in range(1, len(itm)):
+            for ant in map(set, combinations(itm, i)):
+                cons = itm - ant
+                conf = supps[frozenset(itm)] / supps[frozenset(ant)]
+                if conf >= min_conf:
+                    rules.append((tuple(ant), tuple(cons), conf))
     return rules
 
 if __name__ == "__main__":
-    transactions = get_input_data()
-    min_support = float(input("Enter minimum support (as a decimal): "))
-    min_confidence = float(input("Enter minimum confidence (as a decimal): "))
+    trans = get_data()
+    min_supp = float(input("Enter minimum support (as a decimal): "))
+    min_conf = float(input("Enter minimum confidence (as a decimal): "))
     
     # Generate frequent itemsets and supports
-    freq_itemsets, supports = apriori(transactions, min_support)
+    freq_sets, supps = apriori(trans, min_supp)
     
     print("\nFrequent Itemsets:")
-    for itemset in freq_itemsets:
-        print(tuple(itemset))
+    for itm in freq_sets:
+        print(tuple(itm))
     
     # Generate association rules
-    rules = generate_association_rules(freq_itemsets, supports, min_confidence)
+    rules = gen_rules(freq_sets, supps, min_conf)
     
     print("\nAssociation Rules:")
-    for antecedent, consequent, confidence in rules:
-        print(f"Rule: {antecedent} -> {consequent} [Confidence: {confidence:.2f}]")
+    for ant, cons, conf in rules:
+        print(f"Rule: {ant} -> {cons} [Confidence: {conf:.2f}]")
