@@ -1,46 +1,26 @@
-def page_rank(links, damping=0.85, max_iter=100, tol=1e-6):
-    nodes = list(links.keys())
-    N = len(nodes)
-    page_rank = {node: 1.0 / N for node in nodes}
-    
-    # Power iteration: Apply the PageRank formula iteratively
-    for iteration in range(max_iter):
-        old_page_rank = page_rank.copy()
-        for node in nodes:
-            rank_sum = 0
-            for other_node in nodes:
-                if node in links[other_node]:  # Check if other_node links to this node
-                    out_links = len(links[other_node])
-                    if out_links > 0:
-                        rank_sum += old_page_rank[other_node] / out_links
-            
-            # Update PageRank value
-            page_rank[node] = (1 - damping) / N + damping * rank_sum
-        
-        # Check convergence
-        if sum(abs(page_rank[node] - old_page_rank[node]) for node in nodes) < tol:
-            print(f"Converged in {iteration + 1} iterations.")
-            break
-    
-    return page_rank
+import numpy as np
 
-def get_graph_from_user():
-    links = {}
-    
-    # Input all nodes in one line
-    nodes_input = input("Enter all nodes separated by spaces: ").strip().split()
-    
-    for node in nodes_input:
-        links[node] = []
-        links_input = input(f"Enter the nodes that {node} links to (separated by spaces): ").strip()
-        links[node] = links_input.split() if links_input else []  # Allow for no links
-    
-    return links
+n = int(input("enter no. of nodes: "))
+adjacency = []
+print("Enter adjacency matrix:\n")
+for _ in range(n):
+    row = list(map(int, input().split()))
+    adjacency.append(row)
+d = float(input("enter dumping: "))
+i = int(input("enter iterations: "))
 
-# Example usage
-if __name__ == "__main__":
-    links = get_graph_from_user()
-    ranks = page_rank(links)
-    print("\nPageRank values:")
-    for node, rank in ranks.items():
-        print(f"{node}: {rank:.6f}")
+matrix = np.array(adjacency)
+
+pagerank = np.ones(n) / n
+print(pagerank)
+
+for x in range(i):
+    newpagerank = np.zeros(n)
+    for y in range(n):
+        links = np.where(matrix[:, y] > 0)[0]
+        rank = sum(pagerank[z] / np.sum(matrix[z]) for z in links if np.sum(matrix[z]) > 0)
+        newpagerank[y] = (1 - d) + d * rank
+        pagerank = newpagerank
+    pagerank = newpagerank
+    print(pagerank)
+print(pagerank)
